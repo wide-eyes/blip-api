@@ -1,4 +1,4 @@
-from flask import Flask, json, make_response
+from flask import Flask, json, make_response, request
 import random
 import requests
 from requests import Response
@@ -12,7 +12,8 @@ blips_url = 'https://raw.githubusercontent.com/wide-eyes/blip/master/blips.txt'
 def load_blips():
     res = requests.get(blips_url)
     if res.status_code == 200:
-        return [blip for blip in res.text.split('\n') if blip != '']
+        # Yeahhhh this should be better
+        return [blip.split('\t') for blip in res.text.split('\n') if blip != '']
     else:
         return None
 
@@ -20,10 +21,19 @@ app.blips = load_blips()
 
 @app.route('/blip')
 def get_blip():
+    obj = None
     if len(app.blips) > 0:
-        return json.dumps({ 'author': 'tsujeeth', 'text': random.choice(app.blips) })
+        blip = random.choice(app.blips)
+        obj = { 'author': blip[0], 'text': blip[1] }
+
+    if obj:
+        if 'text/javascript' in request.headers.get('Accept'):
+            return 'handleJSONP(' + json.dumps(obj) + ');'
+        else:
+            return json.dumps(obj)
     else:
-        return json.dumps({})
+        return '{}'
+
 
 @app.route('/update')
 def update_blips():
